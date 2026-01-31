@@ -1,6 +1,5 @@
 [build]
-    command = "npm install"
-    publish = "."
+  publish = "."
 
 [functions]
-    directory = "api"
+  directory = "api"

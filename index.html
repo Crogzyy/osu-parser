@@ -134,14 +134,6 @@
 
         .player-avatar { width: 32px; height: 32px; border-radius: 4px; }
 
-        .grade-badge {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            background: var(--accent);
-            margin-left: 5px;
-        }
-
         .winner-badge {
             padding: 5px 15px;
             border-radius: 20px;
@@ -156,8 +148,6 @@
         .winner-blue { color: var(--blue); }
 
         #loading { display: none; margin: 20px; font-style: italic; color: var(--accent); }
-        
-        .games-container { display: block; }
     </style>
 </head>
 <body>
@@ -169,7 +159,7 @@
         <button onclick="parse()">Parse</button>
     </div>
 
-    <div id="loading">Connecting to API...</div>
+    <div id="loading">Connecting to Netlify Functions...</div>
     <div id="results"></div>
 
     <script>
@@ -185,19 +175,25 @@
             document.getElementById('loading').style.display = 'block';
 
             try {
-                // Ensure this fetch path matches your /api/getMatch.js file
+                // FIXED: URL updated to point to Netlify Functions
                 const response = await fetch(`/.netlify/functions/getMatch?url=${encodeURIComponent(url)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
                 const data = await response.json();
 
                 if (data.error) throw new Error(data.error);
 
-                matchHistory = matchHistory.filter(m => m.id !== data.id);
-                matchHistory.unshift(data);
+                // Add to history and save
+                matchHistory = [data, ...matchHistory.filter(m => m.id !== data.id)];
                 localStorage.setItem('matchHistory', JSON.stringify(matchHistory));
                 
                 urlInput.value = '';
                 renderHistory();
             } catch (err) {
+                console.error(err);
                 alert("Error: " + err.message);
             } finally {
                 document.getElementById('loading').style.display = 'none';
@@ -205,12 +201,12 @@
         }
 
         function buildPlayerHtml(players) {
-            if (!players || players.length === 0) return '<div style="opacity:0.5; font-size:0.8rem;">No Scores Recorded</div>';
+            if (!players || players.length === 0) return '<div style="opacity:0.5; font-size:0.8rem;">No Data</div>';
             return players.map(p => `
                 <div class="player-row">
                     <img src="${p.avatar}" class="player-avatar" onerror="this.src='https://osu.ppy.sh/images/layout/avatar-guest.png'">
                     <div style="flex-grow:1; text-align:left;">
-                        <div style="font-size:0.85rem; font-weight:bold;">${p.name} <span class="grade-badge">${p.grade}</span></div>
+                        <div style="font-size:0.85rem; font-weight:bold;">${p.name} [${p.grade}]</div>
                         <div style="font-size:0.7rem; opacity:0.6;">Acc: ${p.accuracy}% | ${p.combo}x</div>
                     </div>
                     <div style="font-weight:900;">${p.score.toLocaleString()}</div>
@@ -230,7 +226,6 @@
                 match.games.forEach(g => {
                     const winClass = g.winner === "Red Wins" ? "winner-red" : "winner-blue";
                     
-                    // Synchronized variables: g.gameMode and g.matchType fix "undefined" tags
                     gamesHtml += `
                         <div class="game-card">
                             <div class="card-backdrop" style="background-image: url('${g.backdrop}')"></div>
@@ -258,20 +253,14 @@
                 });
 
                 item.innerHTML = `
-                    <div class="match-header" onclick="toggleContainer(this)">
+                    <div class="match-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
                         <h2 style="margin:0; font-size:1.1rem;">${match.matchName}</h2>
-                        <span style="font-size: 0.8rem; opacity: 0.5;">Click to toggle</span>
+                        <span style="font-size: 0.8rem; opacity: 0.5;">Toggle Games</span>
                     </div>
                     <div class="games-container">${gamesHtml}</div>`;
                 resultsDiv.appendChild(item);
             });
         }
-
-        function toggleContainer(header) {
-            const container = header.nextElementSibling;
-            container.style.display = container.style.display === 'none' ? 'block' : 'none';
-        }
     </script>
 </body>
 </html>
-

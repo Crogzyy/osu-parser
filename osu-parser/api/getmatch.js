@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-export default async function handler(req, res) {
-  const { url } = req.query;
+// Netlify uses 'handler' with 'event' and 'context'
+export const handler = async (event, context) => {
+  const { url } = event.queryStringParameters; // Netlify gets parameters this way
   const matchId = url.split('/').pop();
 
   try {
@@ -54,8 +55,14 @@ export default async function handler(req, res) {
       };
     });
 
-    res.status(200).json({ id: data.match.id, matchName: data.match.name, games: games.reverse() });
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ id: data.match.id, matchName: data.match.name, games: games.reverse() })
+    };
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: error.message })
+    };
   }
-}
+};
